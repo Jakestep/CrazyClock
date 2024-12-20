@@ -1,0 +1,150 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+ /* width */
+ ::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+  
+  /* Track */
+  ::-webkit-scrollbar-track {
+    background: #f1f1f1;
+  }
+  
+  /* Handle */
+  ::-webkit-scrollbar-thumb {
+    background: #888;
+  }
+  
+  /* Handle on hover */
+  ::-webkit-scrollbar-thumb:hover {
+    background: #555;
+  }
+
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+
+
+  .dragme {
+    -webkit-app-region: drag;
+  }
+
+  .dontdragme {
+    -webkit-app-region: no-drag;
+  }
+
+  :root {
+    --background-image1: url('./backgroundWaterFlow.gif');
+    --background-image2: url('./crazyGreenBackground.gif');
+    --background-image3: url('./purpleBackground.gif');
+    --background-image4: url('./lameStill.jpg');
+    --background-image5: url('./lameStill.jpg');
+  }
+
+  .clip1 {
+    /*
+    Ensure background is added first
+    */  
+    background: var(--background-image1);
+    /* background-blend-mode:color-dodge; */
+    background-size: cover;
+
+    background-attachment: fixed;
+    -webkit-text-fill-color: transparent;
+    -webkit-background-clip: text;
+    background-clip: text;
+    
+    font-size: 30vw;
+    font-weight: bold;
+    text-align: center;
+  }
+  .clip2 {
+    /*
+    Ensure background is added first
+    */  
+    background: var(--background-image2), #aaeebb;
+    background-size: cover;
+    background-blend-mode: multiply;
+    background-position: 0%;
+
+     background-attachment: fixed;
+    -webkit-text-fill-color: transparent;
+    -webkit-background-clip: text;
+    background-clip: text;
+
+    font-size: 30vw;
+    font-weight: bold;
+    text-align: center;
+  }
+  .clip3 {
+    /*
+    Ensure background is added first
+    */  
+    background: var(--background-image3);
+    background-size: cover;
+
+     background-attachment: fixed;
+    -webkit-text-fill-color: transparent;
+    -webkit-background-clip: text;
+    background-clip: text;
+    
+    font-size: 30vw;
+    font-weight: bold;
+    text-align: center;
+  }
+  .clip4 {
+    /*
+    Ensure background is added first
+    */  
+    background: var(--background-image4);
+    background-size: cover;
+    background-position: center;
+    
+    background-attachment: fixed;
+    -webkit-text-fill-color: transparent;
+    -webkit-background-clip: text;
+    background-clip: text;
+    background-repeat: no-repeat;
+    
+    font-size: 30vw;
+    font-weight: bold;
+    text-align: center;
+  }
+  
+  .clip5 {
+    /*
+    Ensure background is added first
+    */  
+    background: var(--background-image5);
+    background-size: cover;
+    background-position: center;
+
+     background-attachment: fixed;
+    -webkit-text-fill-color: transparent;
+    -webkit-background-clip: text;
+    background-clip: text;
+    background-repeat: no-repeat;
+
+    font-size: 30vw;
+    font-weight: bold;
+    text-align: center;
+  }
+  
+  
+  /*
+
+.drop-shadow-\[0_0_10px_\#003100\] {
+    --tw-drop-shadow: drop-shadow(0 0 10px #003100);
+    filter: var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow);
+}
+
+  */
+  
+  
+  
+  
+  
