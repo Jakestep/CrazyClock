@@ -1,5 +1,5 @@
 appId: com.electron.app
-productName: posture-check
+productName: Workout Clock
 directories:
   buildResources: build
 files:
@@ -11,7 +11,7 @@ files:
 asarUnpack:
   - resources/**
 win:
-  executableName: posture-check
+  executableName: workout-clock
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}

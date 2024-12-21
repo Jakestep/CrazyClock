@@ -1,4 +1,4 @@
-# posture-check
+# workout-clock
 
 An Electron application with React
 

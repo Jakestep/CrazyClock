@@ -15,12 +15,13 @@ function createWindow() {
     autoHideMenuBar: true,
     transparent: true,
     frame: false,
-    ...(process.platform === 'linux' ? { icon } : {}),
+    icon: icon,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
     }
   })
+
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
   })
