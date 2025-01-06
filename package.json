@@ -1,7 +1,7 @@
 {
   "name": "workout-clock",
   "version": "1.0.0",
-  "productName": "Workout Clock",
+  "productName": "WorkoutClock",
   "description": "A clock that clips onto images and spins on the half hour to encourage movement",
   "main": "./out/main/index.js",
   "author": "Jacob Estep <jakestep.17@gmail.com>",

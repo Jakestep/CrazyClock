@@ -1,5 +1,5 @@
 appId: com.electron.app
-productName: Workout Clock
+productName: WorkoutClock
 directories:
   buildResources: build
 files:
@@ -32,7 +32,7 @@ linux:
     - AppImage
     - snap
     - deb
-  maintainer: electronjs.org
+  maintainer: jibblejbub@gmail.com
   category: Utility
 appImage:
   artifactName: ${name}-${version}.${ext}
