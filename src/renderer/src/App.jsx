@@ -1,42 +1,35 @@
-import React from 'react'
-import backgroundWaterFlow from './assets/backgroundWaterFlow.gif'
-import purpleBackground from './assets/purpleBackground.gif'
-import crazyGreenBackground from './assets/crazyGreenBackground.gif'
-import lameStill from './assets/lameStill.jpg'
-
+import React, { useEffect, useState } from 'react'
+import { IoMdCheckmark } from 'react-icons/io'
+import { GiCheckMark } from 'react-icons/gi';
+import { IoClose } from 'react-icons/io5';
 
 const App = () => {
-  const [check, setCheck] = React.useState(false)
   const [time, setTime] = React.useState({hours: 0, minutes: 0, day: 0, month: 0})
   const [crazyTime, setCrazyTime] = React.useState(false)
-  const [bgIndex, setBgIndex] = React.useState(0)
-  const [bgImage, setBgImage] = React.useState(null);
   const bgRef = React.useRef(null);
   const [bgShadow, setBgShadow] = React.useState('#000000');
   const colorRef = React.useRef(null);
-  const [currImageObj, setCurrImageObj] = React.useState(null);
-  const [backgroundImageList, setBackgroundImageList] = React.useState([
-    {
-      shadow: '#4488fe',
-      image: backgroundWaterFlow,
-      key: -1,
-    },
-    {
-      shadow: '#003100',
-      image: crazyGreenBackground,
-      key: -1,
-    },
-    {
-      shadow: '#551977',
-      image: purpleBackground,
-      key: -1,
-    },
-    {
-      shadow: '#003300',
-      image: lameStill,
-      key: -1,
-    },
-  ])
+  const fileInputRef = React.useRef(null);
+  const [inputUrl, setInputUrl] = useState('')
+  const [bgIndex, setBgIndex] = useState(0)
+  const [forRefresh, setForRefresh] = useState(false)
+  const [choosingFileOrUrl, setChoosingFileOrUrl] = useState('')
+  const [spinImage, setSpinImage] = useState(null)
+  const [editingImage, setEditingImage] = useState({
+    active: false,
+    bgShadow: '#000000'
+  })
+  const [editingSettings, setEditingSettings] = useState({
+    active: false,
+    interval: '30',
+    spinImage: '',
+    choosingImage: false,
+  })
+  const [backgroundImageList, setBackgroundImageList] = React.useState([])
+
+  const refresh = () => {
+    setForRefresh(prev => !prev);
+  }
 
   React.useEffect(() => {
     const func = async () => {
@@ -47,6 +40,7 @@ const App = () => {
           let db = request.result;
     
           db.createObjectStore("displayData", {autoIncrement: true});
+          db.createObjectStore("settings", {autoIncrement: true});
           res(db);
         }
         request.onsuccess = () => {
@@ -69,9 +63,9 @@ const App = () => {
           const cursor = e.target.result
   
           if (cursor) {
-            console.log(cursor);
             const newItem = {
-              image: URL.createObjectURL(cursor.value.image),
+              imageFile: cursor.value.image,
+              image: typeof(cursor.value.image) == 'object' ? URL.createObjectURL(cursor.value.image) : cursor.value.image,
               shadow: cursor.value.shadow,
               key: cursor.key
             }
@@ -83,101 +77,164 @@ const App = () => {
         }
       })
 
+      let bgIndex = localStorage.getItem("bgIndexPref");
+      if (bgIndex > newItems.length - 1) {
+        localStorage.setItem("bgIndexPref", 0);
+      }
       setBackgroundImageList(() => {
-          
-        return [
-          {
-            shadow: '#4488fe',
-            image: backgroundWaterFlow,
-            key: -1
-          },
-          {
-            shadow: '#003100',
-            image: crazyGreenBackground,
-            key: -1
-          },
-          {
-            shadow: '#551977',
-            image: purpleBackground,
-            key: -1
-          },
-          {
-            shadow: '#003300',
-            image: lameStill,
-            key: -1
-          },
-          ...newItems
-        ]
+        return newItems
       });
     }
     func();
-    
 
-  }, [bgImage, bgIndex])
+
+  }, [bgIndex, forRefresh])
 
   React.useEffect(() => {
-    const date = Date();
-    const new_date = new Date(date);
-    const hours = new_date.getHours();
-    const minutes = new_date.getMinutes();
-    const day = new_date.getDate();
-    const month = new_date.getDay();
-    if (minutes % 30 == 0) {
-      setCrazyTime(true)
-    } else {
-      if (crazyTime != false) {
-        setCrazyTime(false)
-      }
-    }
-    if (time.minutes != minutes) {
-      setTime(prevTime => ({...prevTime, minutes: minutes}))
-      if (time.hours != hours) {
-        setTime(prevTime => ({...prevTime, hours: hours}))
-        if (time.day != day) {
-          setTime(prevTime => ({...prevTime, day: day}))
-          if (time.month != month) {
-            setTime(prevTime => ({...prevTime, month: month}))
+
+    setBgIndex(parseInt(localStorage.getItem('bgIndexPref')) || 0)
+
+    const updateFromIDB = async () => {
+      const db = await new Promise(async (res, rej) => {
+        const request = indexedDB.open('listOfImages');
+        request.onupgradeneeded = () => {
+          console.log("DB Created");
+          let db = request.result;
+    
+          db.createObjectStore("displayData", {autoIncrement: true});
+          db.createObjectStore("settings", {autoIncrement: true});
+          res(db);
+        }
+        request.onsuccess = () => {
+          console.log("DB Connection Successful");
+          res(request.result);
+        }
+        request.onerror = () => {
+          console.error(request.error);
+          rej(request.error);
+        }
+      })
+
+      const request = db.transaction('settings', 'readonly').objectStore('settings').openCursor();
+
+      request.onsuccess = (e) => {
+        const cursor = e.target.result
+
+        if (cursor) {
+          if (typeof(cursor.value.image) == 'string') {
+            setSpinImage(cursor.value.image);
+          } else {
+            setSpinImage(URL.createObjectURL(cursor.value.image))
           }
+          cursor.continue();
         }
       }
+      
     }
-  }, [check])
-  setTimeout(() => setCheck(prevCheck => !prevCheck), 3000)
+    if (!editingSettings.choosingImage && editingSettings.spinImage) {
+      updateFromIDB();
+    }
 
-  
+    function doTime() {
+        const date = Date();
+        const new_date = new Date(date);
+        const hours = new_date.getHours();
+        const minutes = new_date.getMinutes();;
+        const day = new_date.getDate();
+        const month = new_date.getDay();
+        
+        const spinInterval = parseInt(localStorage.getItem('spinInterval') || '30');
 
-  const handleClick = () => {
-    setBgIndex((prev) => {
-      let newI = prev + 1;
-      if (newI >= backgroundImageList.length) {
-        newI = 0;
-      }
-      return newI;
+        if (minutes % spinInterval == 0) {
+          setCrazyTime(true)
+        } 
+        if (minutes % spinInterval != 0) {
+          setCrazyTime(false);
+        }
+        if (time.minutes != minutes) {
+          setTime(prevTime => ({...prevTime, minutes: minutes}))
+          if (time.hours != hours) {
+            setTime(prevTime => ({...prevTime, hours: hours}))
+            if (time.day != day) {
+              setTime(prevTime => ({...prevTime, day: day}))
+              if (time.month != month) {
+                setTime(prevTime => ({...prevTime, month: month}))
+              }
+            }
+          }
+        }
+    }
+    const intervalID = setInterval(doTime, 3000);
+
+    return (() => {
+      clearInterval(intervalID);
     })
-  }
+  }, [editingSettings])  
 
-  const handleChooseShadow = () => {
-    colorRef.current.click();
-  }
-
-  const handleShadowChange = (e) => {
-    setBgShadow(e.target.value);
-
-  }
-  
-  const handleFileInput = (e) => {
-    setBgImage(URL.createObjectURL(e.target.files[0]));
-    setCurrImageObj(e.target.files[0])
-  }
-
-  const handleSave = async () => {
+  const setBgIndexToLatest = async () => {
     const db = await new Promise(async (res, rej) => {
       const request = indexedDB.open('listOfImages');
       request.onupgradeneeded = () => {
         console.log("DB Created");
         let db = request.result;
-  
         db.createObjectStore("displayData", {autoIncrement: true});
+        db.createObjectStore("settings", {autoIncrement: true});
+        res(db);
+      }
+      request.onsuccess = () => {
+        console.log("DB Connection Successful");
+        res(request.result);
+      }
+      request.onerror = () => {
+        console.error(request.error);
+        rej(request.error);
+      }
+    })
+
+    const request = db.transaction("displayData", "readonly");
+    const objectStore = request.objectStore('displayData');
+    const count = objectStore.count();
+    while (count.readyState != 'done') {
+      await new Promise((res, rej) => {
+        setTimeout(() => {res(true)}, 50);
+      })
+    }
+    setBgIndex(count.result - 1);
+
+    request.onerror = (err) => {
+      console.error(`Error adding new image: ${request.error}`);
+    }
+
+    setChoosingFileOrUrl('');
+    refresh();
+  }
+  
+  const handleClick = () => {
+    if (choosingFileOrUrl) {return;}
+    setBgIndex((prev) => {
+      let newI = parseInt(prev) + 1;
+      if (newI >= backgroundImageList.length) {
+        newI = 0;
+      }
+      localStorage.setItem('bgIndexPref', newI);
+      return newI;
+    })
+  }
+
+  // TODO: Next Steps:
+  /*
+   * Add a button in the bottom left to allow choosing of a sticker for crazy time and for changing the interval of how often it goes off
+   * In the editing part, make it such that you can change the scale and position of the image.
+   */
+
+  const handleFileInput = async (e) => {
+    const db = await new Promise(async (res, rej) => {
+      const request = indexedDB.open('listOfImages');
+      request.onupgradeneeded = () => {
+        console.log("DB Created");
+        let db = request.result;
+        db.createObjectStore("displayData", {autoIncrement: true});
+        db.createObjectStore("settings", {autoIncrement: true});
         res(db);
       }
       request.onsuccess = () => {
@@ -191,7 +248,7 @@ const App = () => {
     })
 
     let toSave = {
-      image: currImageObj,
+      image: e.target.files[0],
       shadow: bgShadow
     }
 
@@ -207,7 +264,16 @@ const App = () => {
       console.error(`Error adding new image: ${request.error}`);
     }
 
-    setBgImage(null);
+    setChoosingFileOrUrl('');
+    refresh();
+
+    setBgIndexToLatest();
+
+  }
+
+  const handleChooseFileOrUrl = () => {
+    setChoosingFileOrUrl('choose');
+    setInputUrl('');
   }
 
   const handleRemove = async () => {
@@ -218,6 +284,7 @@ const App = () => {
         let db = request.result;
   
         db.createObjectStore("displayData", {autoIncrement: true});
+        db.createObjectStore("settings", {autoIncrement: true});
         res(db);
       }
       request.onsuccess = () => {
@@ -237,60 +304,342 @@ const App = () => {
       console.log("Item Deleted");
     }
     setBgIndex(0);
+    refresh();
   }
 
-  // console.log(backgroundImageList);
+  const handleUrlChange = (e) => {
+    setInputUrl(e.target.value);
+  }
+
+  const handleUrlSubmit = async () => {
+    const db = await new Promise(async (res, rej) => {
+      const request = indexedDB.open('listOfImages');
+      request.onupgradeneeded = () => {
+        console.log("DB Created");
+        let db = request.result;
+        db.createObjectStore("displayData", {autoIncrement: true});
+        db.createObjectStore("settings", {autoIncrement: true});
+        res(db);
+      }
+      request.onsuccess = () => {
+        console.log("DB Connection Successful");
+        res(request.result);
+      }
+      request.onerror = () => {
+        console.error(request.error);
+        rej(request.error);
+      }
+    })
+
+    let toSave = {
+      image: inputUrl,
+      shadow: bgShadow
+    }
+
+    const request = db.transaction("displayData", "readwrite");
+    const objectStore = request.objectStore('displayData');
+    objectStore.add(toSave);
+
+    request.onsuccess = () => {
+      console.log(`New image added, ID: ${request.result}`);
+      
+    }
+    request.onerror = (err) => {
+      console.error(`Error adding new image: ${request.error}`);
+    }
+    
+    setChoosingFileOrUrl('');
+    refresh();
+
+    setBgIndexToLatest();
+
+  }
+
+  const handleFileInputSpin = async (e) => {
+    
+    setEditingSettings(prev => {
+      return {
+        ...prev,
+        spinImage: URL.createObjectURL(e.target.files[0])
+      }
+    })
+
+    handleSpinSubmit(e.target.files[0]);
+  }
+
+  const handleSpinSubmit = async (image) => {
+    setEditingSettings(prev => ({
+      ...prev,
+      choosingImage: false
+    }))
+
+    const db = await new Promise(async (res, rej) => {
+      const request = indexedDB.open('listOfImages');
+      request.onupgradeneeded = () => {
+        console.log("DB Created");
+        let db = request.result;
+  
+        db.createObjectStore("displayData", {autoIncrement: true});
+        db.createObjectStore("settings", {autoIncrement: true});
+        res(db);
+      }
+      request.onsuccess = () => {
+        console.log("DB Connection Successful");
+        res(request.result);
+      }
+      request.onerror = () => {
+        console.error(request.error);
+        rej(request.error);
+      }
+    })
+
+    const request = db.transaction("settings", "readwrite")
+    const objectStore = request.objectStore('settings');
+    if (await objectStore.count() != 0) {
+      console.log(await objectStore.clear());
+    }
+    objectStore.add({
+      image: image
+    })
+  }
+
+  const handleSaveChanges = async () => {
+    
+    const db = await new Promise(async (res, rej) => {
+      const request = indexedDB.open('listOfImages');
+      request.onupgradeneeded = () => {
+        console.log("DB Created");
+        let db = request.result;
+  
+        db.createObjectStore("displayData", {autoIncrement: true});
+        db.createObjectStore("settings", {autoIncrement: true});
+        res(db);
+      }
+      request.onsuccess = () => {
+        console.log("DB Connection Successful");
+        res(request.result);
+      }
+      request.onerror = () => {
+        console.error(request.error);
+        rej(request.error);
+      }
+    })
+    
+    const request = db.transaction("displayData", "readwrite")
+      .objectStore('displayData')
+      .openCursor();
+      // let newItems = [];
+    request.onsuccess = (e) => {
+      const cursor = e.target.result
+      if (cursor) {
+        if (cursor.key == backgroundImageList[bgIndex].key) {
+          cursor.update({
+            image: backgroundImageList[bgIndex].imageFile,
+            shadow: editingImage.bgShadow
+          });
+        }
+        cursor.continue();
+      } else {
+        setEditingImage(prev => {
+          return {
+            ...prev,
+            active: false
+          }
+        });
+        refresh();
+      }
+    }
+  }
+
+  const handleSaveSettings = () => {
+    //TODO: do it
+    setEditingSettings(false);
+  }
+
+  const handleSettingsChange = (e) => {
+    setEditingSettings(prev => {
+      return {
+        ...prev,
+        [e.target.name]: e.target.value
+      }
+    })
+  }
+
+  const handleSettingsIntervalChange = (e) => {
+    setEditingSettings(prev => {
+      return {
+        ...prev,
+        interval: e.target.value
+      }
+    })
+    localStorage.setItem('spinInterval', e.target.value)
+  }
+
+  if (backgroundImageList.length == 0) {
+    return (
+      <div tabIndex={0} className='w-screen h-screen min-w-[10rem] min-h-[10rem] group/drag flex items-center justify-center '>
+        <div className='h-40 w-64 bg-green-600 border-2 border-black rounded flex items-center justify-center'>
+            {!choosingFileOrUrl &&
+              <button onClick={handleChooseFileOrUrl} className='text-xl text-white w-full h-full'>
+                Click To Add First Image
+              </button>
+            }
+            <div className='flex flex-col gap-4 fixed top-[50%] left-[50%] -translate-x-[50%] -translate-y-[50%] h-fit w-fit'>
+              {
+                choosingFileOrUrl == 'choose' ?
+                  <div className='dontdragme border-none h-8 gap-2 w-fit z-[9999] relative flex'>
+                    <div onClick={() => fileInputRef.current.click()} className=' relative cursor-pointer bg-blue-400 w-14 h-full flex justify-center border-2 border-white rounded text-white'>
+                      <input type='file' ref={fileInputRef} multiple={false} onChange={(e) => handleFileInput(e)} className='cursor-pointer max-w-full max-h-full hidden'  />
+                      <h1 className='absolute -translate-x-[50%] -translate-y-[50%] left-[50%] top-[50%]'>FILE</h1>
+                    </div>
+                    <div className='relative cursor-pointer bg-blue-400 w-14 h-full flex items-center justify-center border-2 border-white rounded text-white'>
+                      <input type='url' className='w-full h-full text-black text-xs pl-1' value={inputUrl} onChange={handleUrlChange} placeholder='URL'/>
+                      <button onClick={handleUrlSubmit}>
+                        <IoMdCheckmark />
+                      </button>
+                    </div>
+                  </div>
+                : ''
+              }
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!spinImage) {
+    return(
+      <div tabIndex={0} className='w-screen h-screen min-w-[10rem] min-h-[10rem] group/drag flex items-center justify-center '>
+        <div className='h-40 w-64 bg-green-600 border-2 border-black rounded flex items-center justify-center'>
+            {!editingSettings.choosingImage &&
+              <button onClick={() => setEditingSettings(prev => ({...prev, choosingImage: true}))} className='text-xl text-white w-full h-full'>
+                <h1 className='text-lg'>Click To Add Spin Image</h1>
+                <h1 className='text-sm'>(You can change this later)</h1>
+              </button>
+            }
+            <div className='dontdragme border-none h-fit gap-2 w-fit z-[9999] relative flex items-center p-1'>
+              <div className='flex flex-col gap-2'>
+                <div className='dontdragme border-none h-8 gap-2 w-fit z-[9999] relative flex'>
+                  <div onClick={() => fileInputRef.current.click()} className=' relative cursor-pointer bg-blue-400 w-14 h-full flex justify-center border-2 border-white rounded text-white'>
+                    <input type='file' ref={fileInputRef} multiple={false} onChange={(e) => handleFileInputSpin(e)} className='cursor-pointer max-w-full max-h-full hidden'  />
+                    <h1 className='absolute -translate-x-[50%] -translate-y-[50%] left-[50%] top-[50%]'>FILE</h1>
+                  </div>
+                  <div className='relative cursor-pointer bg-blue-400 w-14 h-full flex items-center justify-center border-2 border-white rounded text-white'>
+                    <input type='url' className='w-full h-full text-black text-xs p-1' value={editingSettings.spinImage} name='spinImage' onChange={handleSettingsChange} placeholder='URL'/>
+                    <button onClick={() => handleSpinSubmit(editingSettings.spinImage)}>
+                      <IoMdCheckmark />
+                    </button>
+                  </div>
+                </div>
+              </div>
+          </div>
+        </div>
+      </div>
+
+    )
+  }
 
   return (
-    <div className='w-screen h-screen min-w-[10rem] min-h-[10rem] group/drag'>
-      {!bgImage &&
-        <>
-          <button onClick={handleClick} className='h-screen w-screen'>
-            <div className='h-full w-full'>
-              <div className={`${crazyTime ? 'bg-[url("./corgiswimflip.gif")] bg-cover bg-center animate-spin w-screen h-screen fixed' : ''}`} />
-                <div className={`relative w-full h-full flex flex-col items-center justify-center overflow-hidden  ${crazyTime ? 'animate-[spin_2s_cubic-bezier(0.5,2,0.5,-2)_infinite] bg-[url("./corgiswimflip.gif")] bg-repeat bg-center bg-contain' : 'animate-none'}`}>
-                  <h1 ref={bgRef} className={`text-[60vh] dragme m-0 text-black`} style={{ backgroundImage: `url("${backgroundImageList[bgIndex].image}")`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed', WebkitTextFillColor: 'transparent', WebkitBackgroundClip: 'text', backgroundClip: 'text', backgroundRepeat: 'no-repeat', fontSize: '30vw', fontWeight: 'bold', textAlign: 'center', filter: `var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) drop-shadow(0 0 10px ${backgroundImageList[bgIndex].shadow})`}}>
-                    {time.hours > 12 ? time.hours-12 : time.hours}:{time.minutes < 10 ? '0' + time.minutes : time.minutes}
+    <div tabIndex={0} className={`w-screen h-screen min-w-[10rem] min-h-[10rem] group/drag rounded`}>
+      <button onClick={handleClick} className='h-screen w-screen'>
+        <div className='h-full w-full'>
+          <div className={`${(crazyTime || editingSettings.choosingImage) ? ' bg-cover bg-center animate-spin w-screen h-screen fixed' : ''}`} style={{backgroundImage: `url("${spinImage}")`}} />
+            <div className={`fixed w-full h-full flex flex-col items-center justify-center overflow-hidden ${(crazyTime || editingSettings.choosingImage)  ? 'animate-[spin_2s_cubic-bezier(0.5,2,0.5,-2)_infinite] bg-repeat bg-center bg-contain' : 'animate-none'}`} style={{backgroundImage: (crazyTime || editingSettings.choosingImage)  ? `url("${spinImage}")` : ''}}>
+              <div ref={bgRef} className={`text-[60vh] dragme m-0 text-black h-fit `} style={{ backgroundImage: `url("${backgroundImageList[bgIndex].image}")`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed', WebkitTextFillColor: 'transparent', WebkitBackgroundClip: 'text', backgroundClip: 'text', backgroundRepeat: 'no-repeat', fontSize: '30vw', fontWeight: 'bold', textAlign: 'center', filter: `var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) drop-shadow(0 0 10px ${editingImage.active ? editingImage.bgShadow : backgroundImageList[bgIndex].shadow})`}}>
+                <div className='flex items-center h-full'>
+                  <h1 className=''>
+                    {time.hours > 12 ? time.hours-12 : time.hours}
+                  </h1>
+                  <h1 className='pb-[.2em]'>
+                    :
+                  </h1>
+                  <h1>
+                    {time.minutes < 10 ? '0' + time.minutes : time.minutes}
                   </h1>
                 </div>
+              </div>
             </div>
-          </button>
-          <div className='flex flex-col gap-4 fixed top-[50%] left-[50%] -translate-x-[50%] -translate-y-[50%] h-fit w-fit'>
-            <div className='hover:opacity-100 opacity-0 dontdragme border-none h-4 w-4 bg-blue-400 z-[9999]'>
-              <input type='file' onChange={(e) => handleFileInput(e)} className='w-full h-full opacity-0' />
+        </div>
+      </button>
+      <div className='flex flex-col gap-4 fixed top-[50%] left-[50%] -translate-x-[50%] -translate-y-[50%] hover:border-[3px] hover:bg-opacity-40 hover:bg-slate-300 border-red-500 rounded mt-[.3rem] dontdragme group/buttons'>
+        {
+        !editingImage.active && choosingFileOrUrl == '' && !editingSettings.active &&
+          <div className='grid grid-cols-3 gap-1 p-1'>
+            <div className='row-span-3 grid grid-rows-3'>
+              <div />
+              <div />
+              <button title='Settings' onClick={(e) => setEditingSettings((prev) => ({...prev, active: true}))} key={Math.floor(Math.random() * 10e4)} style={{display: 'block'}} className='  hover:scale-105 group-hover/buttons:opacity-100 border-2 border-white opacity-0 h-4 w-4 z-[9999] bg-black' />
             </div>
-            <div style={{display: bgIndex >= 4 ? 'block' : 'none'}} className='hover:opacity-100 opacity-0 dontdragme border-none h-4 w-4 z-[9999] bg-red-700'>
-              <button onClick={(e) => handleRemove(e)} className='w-full h-full opacity-0' />
+            <div className='row-span-3 grid grid-rows-3'>
+              <button title='Add New' onClick={() => handleChooseFileOrUrl()} key={Math.floor(Math.random() * 10e4)} style={{display: 'block'}} className='  hover:scale-105 group-hover/buttons:opacity-100 border-2 border-white opacity-0 h-4 w-4 bg-blue-400 z-[9999]' />
+              <div />
+              <button title='Delete Preset' onClick={(e) => handleRemove(e)}  key={Math.floor(Math.random() * 10e4)} style={{display: 'block'}} className='  hover:scale-105 group-hover/buttons:opacity-100 border-2 border-white opacity-0 h-4 w-4 z-[9999] bg-red-700' />
+            </div>
+            <div className='row-span-3 grid grid-rows-3'>
+              <div />
+              <button title='Edit TODO: make it include scale and position'  onClick={(e) => setEditingImage(() => ({bgShadow: backgroundImageList[bgIndex].shadow, active: true}))}   key={Math.floor(Math.random() * 10e4)} style={{display: 'block'}} className='  hover:scale-105 group-hover/buttons:opacity-100 border-2 border-white opacity-0 h-4 w-4 z-[9999] bg-pink-300' />
             </div>
           </div>
-        </>
-      }
-      {bgImage &&
-        <div>
-          <button onClick={handleChooseShadow} className='h-screen w-screen'>
-            <input type='color' onChange={handleShadowChange} ref={colorRef} className='invisible fixed'/>
-            <div className='h-full w-full'>
-              <div className={`${crazyTime ? 'bg-[url("./corgiswimflip.gif")] bg-cover bg-center animate-spin w-screen h-screen fixed' : ''}`} />
-                <div className={`relative w-full h-full flex flex-col items-center justify-center overflow-hidden  ${crazyTime ? 'animate-[spin_2s_cubic-bezier(0.5,2,0.5,-2)_infinite] bg-[url("./corgiswimflip.gif")] bg-repeat bg-center bg-contain' : 'animate-none'}`}>
-                  <h1 ref={bgRef} className={`text-[60vh] dragme m-0 text-black text-mono`} style={{ backgroundImage: `url("${bgImage}")`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed', WebkitTextFillColor: 'transparent', WebkitBackgroundClip: 'text', backgroundClip: 'text', backgroundRepeat: 'no-repeat', fontSize: '30vw', fontWeight: 'bold', textAlign: 'center', filter: `var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) drop-shadow(0 0 10px ${bgShadow})`}}>
-                    {time.hours > 12 ? time.hours-12 : time.hours}:{time.minutes < 10 ? '0' + time.minutes : time.minutes}
-                  </h1>
+        }
+        {
+        !editingImage.active && !editingSettings.active &&
+          choosingFileOrUrl == 'choose' ?
+            <div className='dontdragme border-none h-8 gap-2 w-fit z-[9999] relative flex items-center'>
+              <div onClick={() => fileInputRef.current.click()} className=' relative cursor-pointer bg-blue-400 w-14 h-full flex justify-center border-2 border-white rounded text-white'>
+                <input type='file' ref={fileInputRef} onChange={(e) => handleFileInput(e)} multiple={false} className='cursor-pointer max-w-full max-h-full hidden'  />
+                <h1 className='absolute -translate-x-[50%] -translate-y-[50%] left-[50%] top-[50%]'>FILE</h1>
+              </div>
+              <div className='relative cursor-pointer bg-blue-400 w-14 h-full flex items-center justify-center border-2 border-white rounded text-white'>
+                <input type='url' className='w-full h-full text-black text-xs pl-1' value={inputUrl} onChange={handleUrlChange} placeholder='URL'/>
+                <button onClick={handleUrlSubmit}>
+                  <IoMdCheckmark />
+                </button>
+              </div>
+              <button onClick={() => setChoosingFileOrUrl('')} className='w-fit h-fit text-white border-2 border-white bg-red-500 rounded-[100%] overflow-clip p-1 flex items-center justify-center'><IoClose size={15}/></button>
+            </div>
+          : ''
+        }
+        {
+          editingImage.active &&
+          <div className='dontdragme border-none h-8 gap-2 w-fit z-[9999] relative flex items-center p-1'>
+            <input value={editingImage.bgShadow} type='color' onChange={(e) => setEditingImage(prev => ({...prev, bgShadow: e.target.value}))} ref={colorRef} className=''/>
+            <button onClick={handleSaveChanges} className='text-white border-2 border-white bg-green-400 rounded-[100%] overflow-clip p-1'><GiCheckMark size={15}/></button>
+          </div>
+        }
+        {
+          editingSettings.active && !editingSettings.choosingImage &&
+          <div className='dontdragme border-none h-fit gap-2 w-fit z-[9999] relative flex items-center p-1'>
+            <div className='flex flex-col gap-2'>
+                <select className='rounded' title='Spin Interval' name='interval' value={editingSettings.interval} onChange={handleSettingsIntervalChange}>
+                  <option value='15'>1 / 15 min</option>
+                  <option value='30'>1 / 30 min</option>
+                  <option value='60'>1 / hour</option>
+                </select>
+                <button onClick={() => setEditingSettings(prev => ({...prev, choosingImage: true, spinImage: ''}))} className='w-fit p-1 bg-blue-500 border-2 border-white text-sm text-white' title='New Spin Image'>Spinner</button>
+            </div>
+            <button onClick={handleSaveSettings} className='text-white border-2 border-white bg-green-400 rounded-[100%] overflow-clip p-1 flex'><GiCheckMark size={15}/></button>
+          </div>
+        }
+        {editingSettings.active && editingSettings.choosingImage &&
+          <div className='dontdragme border-none h-fit gap-2 w-fit z-[9999] relative flex items-center p-1'>
+            <div className='flex flex-col gap-2'>
+              <div className='dontdragme border-none h-8 gap-2 w-fit z-[9999] relative flex'>
+                <div onClick={() => fileInputRef.current.click()} className=' relative cursor-pointer bg-blue-400 w-14 h-full flex justify-center border-2 border-white rounded text-white'>
+                  <input type='file' ref={fileInputRef} multiple={false} onChange={(e) => handleFileInputSpin(e)} className='cursor-pointer max-w-full max-h-full hidden'  />
+                  <h1 className='absolute -translate-x-[50%] -translate-y-[50%] left-[50%] top-[50%]'>FILE</h1>
                 </div>
+                <div className='relative cursor-pointer bg-blue-400 w-14 h-full flex items-center justify-center border-2 border-white rounded text-white'>
+                  <input type='url' className='w-full h-full text-black text-xs p-1' value={editingSettings.spinImage} name='spinImage' onChange={handleSettingsChange} placeholder='URL'/>
+                  <button onClick={() => handleSpinSubmit(editingSettings.spinImage)}>
+                    <IoMdCheckmark />
+                  </button>
+                </div>
+              </div>
             </div>
-          </button>
-          <div className='flex flex-col gap-4 fixed top-[50%] left-[50%] -translate-x-[50%] -translate-y-[50%] h-fit w-fit'>
-            <div className='hover:opacity-100 opacity-0 dontdragme border-none h-4 w-4 bg-blue-400 z-[9999]'>
-              <input type='file' onChange={(e) => handleFileInput(e)} className='w-full h-full opacity-0' />
-            </div>
-            <div className='hover:opacity-100 opacity-0 dontdragme border-none h-4 w-4 bg-green-700 z-[9999]'>
-              <button onClick={(e) => handleSave(e)} className='w-full h-full opacity-0' />
-            </div>
-            <div className='hover:opacity-100 opacity-0 dontdragme border-none h-4 w-4 bg-red-700 z-[9999]'>
-              <button onClick={() => setBgImage(null)} className='w-full h-full opacity-0' />
-            </div>
-          </div>  
-        </div>
-      }
+            <button onClick={() => setEditingSettings(prev => ({...prev, choosingImage: false}))} className='text-white border-2 border-white bg-red-500 rounded-[100%] overflow-clip p-1 flex'><IoClose size={15}/></button>
+          </div>
+        }
+      </div>
     </div>
   )
 }
