@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { IoMdCheckmark } from 'react-icons/io'
 import { GiCheckMark } from 'react-icons/gi';
 import { IoClose } from 'react-icons/io5';
+import styled from "styled-components"
 
 const App = () => {
   const [time, setTime] = React.useState({hours: 0, minutes: 0, day: 0, month: 0})
@@ -15,6 +16,7 @@ const App = () => {
   const [forRefresh, setForRefresh] = useState(false)
   const [choosingFileOrUrl, setChoosingFileOrUrl] = useState('')
   const [spinImage, setSpinImage] = useState(null)
+  const [font, setFont] = useState('')
   const [editingImage, setEditingImage] = useState({
     active: false,
     bgShadow: '#000000'
@@ -93,6 +95,7 @@ const App = () => {
   React.useEffect(() => {
 
     setBgIndex(parseInt(localStorage.getItem('bgIndexPref')) || 0)
+    setFont(localStorage.getItem("font") || '')
 
     const updateFromIDB = async () => {
       const db = await new Promise(async (res, rej) => {
@@ -131,7 +134,7 @@ const App = () => {
       }
       
     }
-    if (!editingSettings.choosingImage && editingSettings.spinImage) {
+    if ((!editingSettings.choosingImage && editingSettings.spinImage) || !spinImage) {
       updateFromIDB();
     }
 
@@ -220,12 +223,6 @@ const App = () => {
       return newI;
     })
   }
-
-  // TODO: Next Steps:
-  /*
-   * Add a button in the bottom left to allow choosing of a sticker for crazy time and for changing the interval of how often it goes off
-   * In the editing part, make it such that you can change the scale and position of the image.
-   */
 
   const handleFileInput = async (e) => {
     const db = await new Promise(async (res, rej) => {
@@ -452,7 +449,6 @@ const App = () => {
   }
 
   const handleSaveSettings = () => {
-    //TODO: do it
     setEditingSettings(false);
   }
 
@@ -474,6 +470,7 @@ const App = () => {
     })
     localStorage.setItem('spinInterval', e.target.value)
   }
+
 
   if (backgroundImageList.length == 0) {
     return (
@@ -517,22 +514,24 @@ const App = () => {
                 <h1 className='text-sm'>(You can change this later)</h1>
               </button>
             }
-            <div className='dontdragme border-none h-fit gap-2 w-fit z-[9999] relative flex items-center p-1'>
-              <div className='flex flex-col gap-2'>
-                <div className='dontdragme border-none h-8 gap-2 w-fit z-[9999] relative flex'>
-                  <div onClick={() => fileInputRef.current.click()} className=' relative cursor-pointer bg-blue-400 w-14 h-full flex justify-center border-2 border-white rounded text-white'>
-                    <input type='file' ref={fileInputRef} multiple={false} onChange={(e) => handleFileInputSpin(e)} className='cursor-pointer max-w-full max-h-full hidden'  />
-                    <h1 className='absolute -translate-x-[50%] -translate-y-[50%] left-[50%] top-[50%]'>FILE</h1>
-                  </div>
-                  <div className='relative cursor-pointer bg-blue-400 w-14 h-full flex items-center justify-center border-2 border-white rounded text-white'>
-                    <input type='url' className='w-full h-full text-black text-xs p-1' value={editingSettings.spinImage} name='spinImage' onChange={handleSettingsChange} placeholder='URL'/>
-                    <button onClick={() => handleSpinSubmit(editingSettings.spinImage)}>
-                      <IoMdCheckmark />
-                    </button>
+            {editingSettings.choosingImage &&
+              <div className='dontdragme border-none h-fit gap-2 w-fit z-[9999] relative flex items-center p-1'>
+                <div className='flex flex-col gap-2'>
+                  <div className='dontdragme border-none h-8 gap-2 w-fit z-[9999] relative flex'>
+                    <div onClick={() => fileInputRef.current.click()} className=' relative cursor-pointer bg-blue-400 w-14 h-full flex justify-center border-2 border-white rounded text-white'>
+                      <input type='file' ref={fileInputRef} multiple={false} onChange={(e) => handleFileInputSpin(e)} className='cursor-pointer max-w-full max-h-full hidden'  />
+                      <h1 className='absolute -translate-x-[50%] -translate-y-[50%] left-[50%] top-[50%]'>FILE</h1>
+                    </div>
+                    <div className='relative cursor-pointer bg-blue-400 w-14 h-full flex items-center justify-center border-2 border-white rounded text-white'>
+                      <input type='url' className='w-full h-full text-black text-xs p-1' value={editingSettings.spinImage} name='spinImage' onChange={handleSettingsChange} placeholder='URL'/>
+                      <button onClick={() => handleSpinSubmit(editingSettings.spinImage)}>
+                        <IoMdCheckmark />
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-          </div>
+            </div>
+            }
         </div>
       </div>
 
@@ -546,11 +545,16 @@ const App = () => {
           <div className={`${(crazyTime || editingSettings.choosingImage) ? ' bg-cover bg-center animate-spin w-screen h-screen fixed' : ''}`} style={{backgroundImage: `url("${spinImage}")`}} />
             <div className={`fixed w-full h-full flex flex-col items-center justify-center overflow-hidden ${(crazyTime || editingSettings.choosingImage)  ? 'animate-[spin_2s_cubic-bezier(0.5,2,0.5,-2)_infinite] bg-repeat bg-center bg-contain' : 'animate-none'}`} style={{backgroundImage: (crazyTime || editingSettings.choosingImage)  ? `url("${spinImage}")` : ''}}>
               <div ref={bgRef} className={`text-[60vh] dragme m-0 text-black h-fit `} style={{ backgroundImage: `url("${backgroundImageList[bgIndex].image}")`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed', WebkitTextFillColor: 'transparent', WebkitBackgroundClip: 'text', backgroundClip: 'text', backgroundRepeat: 'no-repeat', fontSize: '30vw', fontWeight: 'bold', textAlign: 'center', filter: `var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) drop-shadow(0 0 10px ${editingImage.active ? editingImage.bgShadow : backgroundImageList[bgIndex].shadow})`}}>
-                <div className='flex items-center h-full'>
+                <div className='flex items-center h-fit select-none' style={{fontFamily: font || 'ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"; "sans-serif"'}}>
                   <h1 className=''>
                     {time.hours > 12 ? time.hours-12 : time.hours}
                   </h1>
-                  <h1 className='pb-[.2em]'>
+                  <h1
+                    className='font-sans'
+                    style={{
+                      fontFamily: font || 'ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"; "sans-serif"',
+                    }}
+                  >
                     :
                   </h1>
                   <h1>
@@ -577,7 +581,7 @@ const App = () => {
             </div>
             <div className='row-span-3 grid grid-rows-3'>
               <div />
-              <button title='Edit TODO: make it include scale and position'  onClick={(e) => setEditingImage(() => ({bgShadow: backgroundImageList[bgIndex].shadow, active: true}))}   key={Math.floor(Math.random() * 10e4)} style={{display: 'block'}} className='  hover:scale-105 group-hover/buttons:opacity-100 border-2 border-white opacity-0 h-4 w-4 z-[9999] bg-pink-300' />
+              <button title='Edit'  onClick={(e) => setEditingImage(() => ({bgShadow: backgroundImageList[bgIndex].shadow, active: true}))}   key={Math.floor(Math.random() * 10e4)} style={{display: 'block'}} className='  hover:scale-105 group-hover/buttons:opacity-100 border-2 border-white opacity-0 h-4 w-4 z-[9999] bg-pink-300' />
             </div>
           </div>
         }
@@ -602,7 +606,7 @@ const App = () => {
         {
           editingImage.active &&
           <div className='dontdragme border-none h-8 gap-2 w-fit z-[9999] relative flex items-center p-1'>
-            <input value={editingImage.bgShadow} type='color' onChange={(e) => setEditingImage(prev => ({...prev, bgShadow: e.target.value}))} ref={colorRef} className=''/>
+            <input value={editingImage.bgShadow} type='color' title='Text shadow' onChange={(e) => setEditingImage(prev => ({...prev, bgShadow: e.target.value}))} ref={colorRef} className=''/>
             <button onClick={handleSaveChanges} className='text-white border-2 border-white bg-green-400 rounded-[100%] overflow-clip p-1'><GiCheckMark size={15}/></button>
           </div>
         }
@@ -614,6 +618,17 @@ const App = () => {
                   <option value='15'>1 / 15 min</option>
                   <option value='30'>1 / 30 min</option>
                   <option value='60'>1 / hour</option>
+                </select>
+                <select className='rounded' title='Font' name='font' value={font} onChange={(e) => {
+                    setFont(e.target.value);
+                    localStorage.setItem("font", e.target.value);
+                  }}>
+                <option value='sans-serif' className='font-[sans-serif]'>Sans</option>
+                <option value='Jersey-15' className='font-[Jersey-15]'>Jersey-15</option>
+                <option value='Agu-Display' className='font-[Agu-Display]'>Agu-Display</option>
+                <option value='Dancing-Script' className='font-[Dancing-Script]'>Dancing-Script</option>
+                <option value='Teko-Regular' className='font-[Teko-Regular]'>Teko-Regular</option>
+                <option value='Abril' className='font-[Abril]'>Abril</option>
                 </select>
                 <button onClick={() => setEditingSettings(prev => ({...prev, choosingImage: true, spinImage: ''}))} className='w-fit p-1 bg-blue-500 border-2 border-white text-sm text-white' title='New Spin Image'>Spinner</button>
             </div>

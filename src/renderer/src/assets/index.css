@@ -134,6 +134,27 @@
     text-align: center;
   }
 
+  @font-face {
+    font-family: 'Jersey-15';
+    src: url('./fonts/Jersey15-Regular.ttf');
+  }
+  @font-face {
+    font-family: 'Agu-Display';
+    src: url('./fonts/AguDisplay-Regular-VariableFont_MORF.ttf');
+  }
+  @font-face {
+    font-family: 'Dancing-Script';
+    src: url('./fonts/DancingScript-VariableFont_wght.ttf');
+  }
+  @font-face {
+    font-family: 'Teko-Regular';
+    src: url('./fonts/Teko-Regular.ttf');
+  }
+  @font-face {
+    font-family: 'Abril';
+    src: url('./fonts/AbrilFatface-Regular.ttf');
+  }
+
   /*
 
 .drop-shadow-\[0_0_10px_\#003100\] {
