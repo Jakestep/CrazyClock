@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react'
-import { IoMdCheckmark } from 'react-icons/io'
+import { IoMdCheckmark, IoMdClose } from 'react-icons/io'
 import { GiCheckMark } from 'react-icons/gi';
 import { IoClose } from 'react-icons/io5';
-import styled from "styled-components"
 
 const App = () => {
   const [time, setTime] = React.useState({hours: 0, minutes: 0, day: 0, month: 0})
@@ -16,7 +15,7 @@ const App = () => {
   const [forRefresh, setForRefresh] = useState(false)
   const [choosingFileOrUrl, setChoosingFileOrUrl] = useState('')
   const [spinImage, setSpinImage] = useState(null)
-  const [font, setFont] = useState('')
+  const [font, setFont] = useState('Teko-Regular')
   const [editingImage, setEditingImage] = useState({
     active: false,
     bgShadow: '#000000'
@@ -67,6 +66,7 @@ const App = () => {
           if (cursor) {
             const newItem = {
               imageFile: cursor.value.image,
+              color: cursor.value.color || '',
               image: typeof(cursor.value.image) == 'object' ? URL.createObjectURL(cursor.value.image) : cursor.value.image,
               shadow: cursor.value.shadow,
               key: cursor.key
@@ -95,7 +95,7 @@ const App = () => {
   React.useEffect(() => {
 
     setBgIndex(parseInt(localStorage.getItem('bgIndexPref')) || 0)
-    setFont(localStorage.getItem("font") || '')
+    setFont(localStorage.getItem("font") || 'Teko-Regular')
 
     const updateFromIDB = async () => {
       const db = await new Promise(async (res, rej) => {
@@ -431,6 +431,7 @@ const App = () => {
       if (cursor) {
         if (cursor.key == backgroundImageList[bgIndex].key) {
           cursor.update({
+            color: backgroundImageList[bgIndex].color || '',
             image: backgroundImageList[bgIndex].imageFile,
             shadow: editingImage.bgShadow
           });
@@ -448,6 +449,8 @@ const App = () => {
     }
   }
 
+  // console.log(backgroundImageList);
+
   const handleSaveSettings = () => {
     setEditingSettings(false);
   }
@@ -461,7 +464,22 @@ const App = () => {
     })
   }
 
+  const handleClose = () => {
+    window.close();
+  }
+
   const handleSettingsIntervalChange = (e) => {
+
+    if (e.target.value == '61') {
+      let keepGoing = window.confirm("By confirming, the reminders to move will be turned off until you turn them back on.\n( Don't forget to turn them back on :D )")
+      console.log(keepGoing);
+      if (!keepGoing) {
+        setEditingSettings(prev => {
+          return {...prev}
+        })
+        return;
+      }
+    }
     setEditingSettings(prev => {
       return {
         ...prev,
@@ -471,11 +489,59 @@ const App = () => {
     localStorage.setItem('spinInterval', e.target.value)
   }
 
+  const handleColorSubmit = async () => {
+    const db = await new Promise(async (res, rej) => {
+      const request = indexedDB.open('listOfImages');
+      request.onupgradeneeded = () => {
+        console.log("DB Created");
+        let db = request.result;
+        db.createObjectStore("displayData", {autoIncrement: true});
+        db.createObjectStore("settings", {autoIncrement: true});
+        res(db);
+      }
+      request.onsuccess = () => {
+        console.log("DB Connection Successful");
+        res(request.result);
+      }
+      request.onerror = () => {
+        console.error(request.error);
+        rej(request.error);
+      }
+    })
+
+    let toSave = {
+      image: '',
+      color: colorRef.current.value,
+      shadow: bgShadow
+    }
+
+    const request = db.transaction("displayData", "readwrite");
+    const objectStore = request.objectStore('displayData');
+    objectStore.add(toSave);
+
+    request.onsuccess = () => {
+      console.log(`New image added, ID: ${request.result}`);
+      
+    }
+    request.onerror = (err) => {
+      console.error(`Error adding new image: ${request.error}`);
+    }
+    
+    setChoosingFileOrUrl('');
+    refresh();
+
+    setBgIndexToLatest();
+
+  }
 
   if (backgroundImageList.length == 0) {
     return (
       <div tabIndex={0} className='w-screen h-screen min-w-[10rem] min-h-[10rem] group/drag flex items-center justify-center '>
-        <div className='h-40 w-64 bg-green-600 border-2 border-black rounded flex items-center justify-center'>
+        <div className='h-40 w-64 bg-[#682D05] relative border-2 border-black rounded flex items-center justify-center'>
+          <div className='bg-green-600 w-full h-5 absolute top-0 left-0 flex items-center justify-end pr-1'>
+            <div className='w-full h-full dragme' />
+            <button onClick={handleClose}><IoMdClose /></button>
+          </div>
             {!choosingFileOrUrl &&
               <button onClick={handleChooseFileOrUrl} className='text-xl text-white w-full h-full'>
                 Click To Add First Image
@@ -484,9 +550,15 @@ const App = () => {
             <div className='flex flex-col gap-4 fixed top-[50%] left-[50%] -translate-x-[50%] -translate-y-[50%] h-fit w-fit'>
               {
                 choosingFileOrUrl == 'choose' ?
-                  <div className='dontdragme border-none h-8 gap-2 w-fit z-[9999] relative flex'>
+                  <div className='dontdragme border-none h-8 gap-2 w-fit z-[9999] relative flex items-center'>
+                    <div onClick={() => colorRef.current.click()} className=' relative cursor-pointer bg-blue-400 w-14 h-full flex justify-center border-2 border-white rounded text-white'>
+                      <input type='color' ref={colorRef} multiple={false} className='cursor-pointer w-full h-full' />
+                      <button onClick={handleColorSubmit}>
+                        <IoMdCheckmark />
+                      </button>
+                    </div>
                     <div onClick={() => fileInputRef.current.click()} className=' relative cursor-pointer bg-blue-400 w-14 h-full flex justify-center border-2 border-white rounded text-white'>
-                      <input type='file' ref={fileInputRef} multiple={false} onChange={(e) => handleFileInput(e)} className='cursor-pointer max-w-full max-h-full hidden'  />
+                      <input type='file' ref={fileInputRef} onChange={(e) => handleFileInput(e)} multiple={false} className='cursor-pointer max-w-full max-h-full hidden' />
                       <h1 className='absolute -translate-x-[50%] -translate-y-[50%] left-[50%] top-[50%]'>FILE</h1>
                     </div>
                     <div className='relative cursor-pointer bg-blue-400 w-14 h-full flex items-center justify-center border-2 border-white rounded text-white'>
@@ -495,8 +567,9 @@ const App = () => {
                         <IoMdCheckmark />
                       </button>
                     </div>
+                    <button onClick={() => setChoosingFileOrUrl('')} className='w-fit h-fit text-white border-2 border-white bg-red-500 rounded-[100%] overflow-clip p-1 flex items-center justify-center'><IoClose size={15}/></button>
                   </div>
-                : ''
+              : ''
               }
           </div>
         </div>
@@ -507,11 +580,15 @@ const App = () => {
   if (!spinImage) {
     return(
       <div tabIndex={0} className='w-screen h-screen min-w-[10rem] min-h-[10rem] group/drag flex items-center justify-center '>
-        <div className='h-40 w-64 bg-green-600 border-2 border-black rounded flex items-center justify-center'>
+        <div className='h-40 w-64 bg-[#682D05] relative border-2 border-black rounded flex items-center justify-center'>
+          <div className='bg-green-600 w-full h-5 absolute top-0 left-0 flex items-center justify-end pr-1'>
+            <div className='w-full h-full dragme' />
+            <button onClick={handleClose}><IoMdClose /></button>
+          </div>
             {!editingSettings.choosingImage &&
               <button onClick={() => setEditingSettings(prev => ({...prev, choosingImage: true}))} className='text-xl text-white w-full h-full'>
                 <h1 className='text-lg'>Click To Add Spin Image</h1>
-                <h1 className='text-sm'>(You can change this later)</h1>
+                <h1 className='text-sm'>(You <span className='italic font-bold'>{' can '}</span>change this later)</h1>
               </button>
             }
             {editingSettings.choosingImage &&
@@ -537,14 +614,14 @@ const App = () => {
 
     )
   }
-
+  
   return (
     <div tabIndex={0} className={`w-screen h-screen min-w-[10rem] min-h-[10rem] group/drag rounded`}>
       <button onClick={handleClick} className='h-screen w-screen'>
         <div className='h-full w-full'>
           <div className={`${(crazyTime || editingSettings.choosingImage) ? ' bg-cover bg-center animate-spin w-screen h-screen fixed' : ''}`} style={{backgroundImage: `url("${spinImage}")`}} />
             <div className={`fixed w-full h-full flex flex-col items-center justify-center overflow-hidden ${(crazyTime || editingSettings.choosingImage)  ? 'animate-[spin_2s_cubic-bezier(0.5,2,0.5,-2)_infinite] bg-repeat bg-center bg-contain' : 'animate-none'}`} style={{backgroundImage: (crazyTime || editingSettings.choosingImage)  ? `url("${spinImage}")` : ''}}>
-              <div ref={bgRef} className={`text-[60vh] dragme m-0 text-black h-fit `} style={{ backgroundImage: `url("${backgroundImageList[bgIndex].image}")`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed', WebkitTextFillColor: 'transparent', WebkitBackgroundClip: 'text', backgroundClip: 'text', backgroundRepeat: 'no-repeat', fontSize: '30vw', fontWeight: 'bold', textAlign: 'center', filter: `var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) drop-shadow(0 0 10px ${editingImage.active ? editingImage.bgShadow : backgroundImageList[bgIndex].shadow})`}}>
+              <div ref={bgRef} className={`text-[60vh] dragme m-0 text-black h-fit `} style={{ backgroundImage: `url("${backgroundImageList[bgIndex].image || ''}")`, backgroundColor: `${backgroundImageList[bgIndex].color || ''}`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed', WebkitTextFillColor: 'transparent', WebkitBackgroundClip: 'text', backgroundClip: 'text', backgroundRepeat: 'no-repeat', fontSize: '30vw', fontWeight: 'bold', textAlign: 'center', filter: `var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) drop-shadow(0 0 10px ${editingImage.active ? editingImage.bgShadow : backgroundImageList[bgIndex].shadow})`}}>
                 <div className='flex items-center h-fit select-none' style={{fontFamily: font || 'ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"; "sans-serif"'}}>
                   <h1 className=''>
                     {time.hours > 12 ? time.hours-12 : time.hours}
@@ -580,8 +657,9 @@ const App = () => {
               <button title='Delete Preset' onClick={(e) => handleRemove(e)}  key={Math.floor(Math.random() * 10e4)} style={{display: 'block'}} className='  hover:scale-105 group-hover/buttons:opacity-100 border-2 border-white opacity-0 h-4 w-4 z-[9999] bg-red-700' />
             </div>
             <div className='row-span-3 grid grid-rows-3'>
+              <button title='Close App'  onClick={handleClose}   key={Math.floor(Math.random() * 10e4)} style={{display: 'block'}} className='  hover:scale-105 group-hover/buttons:opacity-100 border-2 border-white opacity-0 h-2 w-2 ml-auto z-[9999] bg-black' />
+              <button title='Edit Shadow'  onClick={(e) => setEditingImage(() => ({bgShadow: backgroundImageList[bgIndex].shadow, active: true}))}   key={Math.floor(Math.random() * 10e4)} style={{display: 'block'}} className='  hover:scale-105 group-hover/buttons:opacity-100 border-2 border-white opacity-0 h-4 w-4 z-[9999] bg-pink-300' />
               <div />
-              <button title='Edit'  onClick={(e) => setEditingImage(() => ({bgShadow: backgroundImageList[bgIndex].shadow, active: true}))}   key={Math.floor(Math.random() * 10e4)} style={{display: 'block'}} className='  hover:scale-105 group-hover/buttons:opacity-100 border-2 border-white opacity-0 h-4 w-4 z-[9999] bg-pink-300' />
             </div>
           </div>
         }
@@ -589,8 +667,14 @@ const App = () => {
         !editingImage.active && !editingSettings.active &&
           choosingFileOrUrl == 'choose' ?
             <div className='dontdragme border-none h-8 gap-2 w-fit z-[9999] relative flex items-center'>
+              <div onClick={() => colorRef.current.click()} className=' relative cursor-pointer bg-blue-400 w-14 h-full flex justify-center border-2 border-white rounded text-white'>
+                <input type='color' ref={colorRef} multiple={false} className='cursor-pointer w-full h-full' />
+                <button onClick={handleColorSubmit}>
+                  <IoMdCheckmark />
+                </button>
+              </div>
               <div onClick={() => fileInputRef.current.click()} className=' relative cursor-pointer bg-blue-400 w-14 h-full flex justify-center border-2 border-white rounded text-white'>
-                <input type='file' ref={fileInputRef} onChange={(e) => handleFileInput(e)} multiple={false} className='cursor-pointer max-w-full max-h-full hidden'  />
+                <input type='file' ref={fileInputRef} onChange={(e) => handleFileInput(e)} multiple={false} className='cursor-pointer max-w-full max-h-full hidden' />
                 <h1 className='absolute -translate-x-[50%] -translate-y-[50%] left-[50%] top-[50%]'>FILE</h1>
               </div>
               <div className='relative cursor-pointer bg-blue-400 w-14 h-full flex items-center justify-center border-2 border-white rounded text-white'>
@@ -614,10 +698,11 @@ const App = () => {
           editingSettings.active && !editingSettings.choosingImage &&
           <div className='dontdragme border-none h-fit gap-2 w-fit z-[9999] relative flex items-center p-1'>
             <div className='flex flex-col gap-2'>
-                <select className='rounded' title='Spin Interval' name='interval' value={editingSettings.interval} onChange={handleSettingsIntervalChange}>
+                <select className='rounded' title='Spin Interval' name='interval' defaultValue={localStorage.getItem("spinInterval") || '30'} value={editingSettings.interval} onChange={handleSettingsIntervalChange}>
                   <option value='15'>1 / 15 min</option>
                   <option value='30'>1 / 30 min</option>
                   <option value='60'>1 / hour</option>
+                  <option value='61' className='text-gray-600 text-xs'>never</option>
                 </select>
                 <select className='rounded' title='Font' name='font' value={font} onChange={(e) => {
                     setFont(e.target.value);

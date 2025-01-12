@@ -1,5 +1,6 @@
-appId: com.electron.app
-productName: WorkoutClock
+appId: com.Wyvern.WorkoutClock
+productName: 30-for-30 Workout Clock
+icon: './build/icon'
 directories:
   buildResources: build
 files:
@@ -11,7 +12,7 @@ files:
 asarUnpack:
   - resources/**
 win:
-  executableName: workout-clock
+  appId: com.Wyvern.WorkoutClock
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
@@ -37,6 +38,3 @@ linux:
 appImage:
   artifactName: ${name}-${version}.${ext}
 npmRebuild: false
-publish:
-  provider: generic
-  url: https://example.com/auto-updates
