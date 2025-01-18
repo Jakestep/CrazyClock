@@ -17,7 +17,7 @@
     "build:win": "npm run build && electron-builder --win --config",
     "build:mac": "npm run build && electron-builder --mac --config",
     "build:linux": "npm run build && electron-builder --linux --config",
-    "build:package": "electron-packager . --out=out",
+    "build:package": "npm run build && electron-packager . --out=out",
     "build:snap": "electron-installer-snap --src=out/workoutclock-linux-x64"
   },
   "dependencies": {
@@ -46,10 +46,9 @@
       ]
     },
     "linux": {
-      "target": [
-        "AppImage",
-        "deb"
-      ]
+      "target": "deb",
+      "arch": 64,
+      "title": "30-for-30 Workout Clock"
     }
   },
   "devDependencies": {
