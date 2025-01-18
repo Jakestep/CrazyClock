@@ -1,4 +1,4 @@
-appId: com.Wyvern.WorkoutClock
+appId: com.EverLessTech.WorkoutClock
 productName: 30-for-30 Workout Clock
 icon: './build/icon'
 directories:
@@ -12,7 +12,7 @@ files:
 asarUnpack:
   - resources/**
 win:
-  appId: com.Wyvern.WorkoutClock
+  appId: com.EverLessTech.WorkoutClock
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}

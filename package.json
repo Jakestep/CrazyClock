@@ -1,7 +1,7 @@
 {
-  "name": "workout-clock",
+  "name": "30-for-30_workout_clock",
   "version": "1.0.0",
-  "productName": "Workout Clock",
+  "productName": "30-for-30 Workout Clock",
   "description": "This app allows you to turn any image into a clock that will go 'crazy' every 15, 30, or 60 minutes to encourage movement and blood flow when working at a desk. Fully customizable with any image file, link, or color; customizable text shadows; and even the icon that will appear when the app goes 'crazy'!",
   "main": "./out/main/index.js",
   "author": "Jacob Estep <jakestep.17@gmail.com>",
@@ -27,7 +27,7 @@
     "react-icons": "^5.4.0"
   },
   "build": {
-    "appId": "com.Wyvern.WorkoutClock",
+    "appId": "com.EverLessTech.WorkoutClock",
     "win": {
       "signAndEditExecutable": true
     },
